@@ -17,7 +17,17 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(helmet());
-app.use(cors());
+const corsOptions = {
+  origin: [
+    'https://quizmaster.therohankumar.com',
+    'http://localhost:3000',  // for React development
+    'http://localhost:3001'   // alternative dev port
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-access-token']
+};
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Rate limiting
