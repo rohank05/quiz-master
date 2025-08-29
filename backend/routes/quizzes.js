@@ -37,8 +37,8 @@ router.get('/start/:skillId', authenticateToken, async (req, res) => {
         ORDER BY RAND()
       `, [skillId]);
 
-      questions = JSON.stringify(questionRows);
-      await req.redis.setEx(cacheKey, 3600, questions); // Cache for 1 hour
+      questions = questionRows;
+      await req.redis.setEx(cacheKey, 3600, JSON.stringify(questionRows)); // Cache for 1 hour
     } else {
       questions = JSON.parse(questions);
     }
@@ -49,7 +49,7 @@ router.get('/start/:skillId', authenticateToken, async (req, res) => {
 
     res.json({
       skill: skills[0],
-      questions: questions,
+      questions: JSON.stringify(questions),
       total_questions: questions.length
     });
 
