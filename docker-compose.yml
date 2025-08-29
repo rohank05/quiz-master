@@ -1,0 +1,95 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: skill-assessment-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: skill_assessment
+      MYSQL_USER: quizuser
+      MYSQL_PASSWORD: quizpass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./backend/database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    networks:
+      - skill-assessment-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: skill-assessment-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - skill-assessment-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: skill-assessment-backend
+    restart: unless-stopped
+    ports:
+      - "5001:5000"
+    environment:
+      NODE_ENV: production
+      DB_HOST: mysql
+      DB_USER: quizuser
+      DB_PASSWORD: quizpass
+      DB_NAME: skill_assessment
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: your-production-jwt-secret-key-change-this
+      PORT: 5000
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - skill-assessment-network
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: skill-assessment-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      REACT_APP_API_URL: http://localhost:5001
+    depends_on:
+      - backend
+    networks:
+      - skill-assessment-network
+
+volumes:
+  mysql_data:
+  redis_data:
+
+networks:
+  skill-assessment-network:
+    driver: bridge
